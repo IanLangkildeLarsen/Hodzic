@@ -64,5 +64,153 @@
       margin-top: 10px;
       font-weight: bold;
       color: #d00;
-      mi
+      min-height: 24px;
+    }
+  </style>
 
+  <script>
+    // Registrer service worker til PWA
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+        .then(() => console.log("✅ Service Worker registreret"))
+        .catch(err => console.log("❌ SW fejl:", err));
+    }
+  </script>
+</head>
+<body>
+
+  <h2>🎤 Automatisk Taleoversætter</h2>
+  <div id="flags">🇩🇰 ↔ 🇧🇦</div>
+
+  <div id="micIcon"></div>
+  <div id="status"></div>
+
+  <button id="startBtn" onclick="startRecognition()">🎙️ Start optagelse</button>
+  <button id="stopBtn" onclick="stopRecognition()" disabled>⏹️ Stop optagelse</button>
+  <button onclick="resetFields()">🔁 Oversæt igen</button>
+
+  <div class="box">
+    <p id="spokenText">Du sagde: ...</p>
+    <p id="translatedText">Oversat: ...</p>
+  </div>
+
+  <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      document.getElementById('status').textContent = "❌ Din browser understøtter ikke talegenkendelse. Prøv Safari på iPhone.";
+    }
+
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    if (recognition) {
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    }
+
+    const langs = [
+      { code: "da-DK", name: "Dansk", target: "bs", speakLang: "bs-BA" },
+      { code: "bs-BA", name: "Bosnisk", target: "da", speakLang: "da-DK" }
+    ];
+
+    let currentLangIndex = 0;
+    let recognizing = false;
+
+    async function tryRecognize(langIndex = 0) {
+      if (!recognition) return;
+
+      currentLangIndex = langIndex;
+
+      if (langIndex >= langs.length) {
+        document.getElementById('status').textContent = "❌ Kunne ikke genkende sproget.";
+        document.getElementById('micIcon').style.display = "none";
+        recognizing = false;
+        toggleButtons();
+        return;
+      }
+
+      recognition.lang = langs[langIndex].code;
+      recognition.start();
+      recognizing = true;
+      toggleButtons();
+
+      document.getElementById('status').textContent = `🎙️ Lytter på ${langs[langIndex].name}...`;
+      document.getElementById('micIcon').style.display = "block";
+
+      recognition.onresult = async function(event) {
+        const spoken = event.results[0][0].transcript;
+        document.getElementById('spokenText').textContent = `Du sagde (${langs[langIndex].name}): ${spoken}`;
+
+        try {
+          const res = await fetch("https://libretranslate.de/translate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              q: spoken,
+              source: langs[langIndex].code.slice(0, 2),
+              target: langs[langIndex].target,
+              format: "text"
+            })
+          });
+          const data = await res.json();
+          const translated = data.translatedText;
+          document.getElementById('translatedText').textContent = `Oversat: ${translated}`;
+
+          const utterance = new SpeechSynthesisUtterance(translated);
+          utterance.lang = langs[langIndex].speakLang;
+          speechSynthesis.speak(utterance);
+
+          document.getElementById('status').textContent = "";
+          document.getElementById('micIcon').style.display = "none";
+          recognizing = false;
+          toggleButtons();
+        } catch (e) {
+          document.getElementById('status').textContent = "❌ Oversættelse mislykkedes.";
+          document.getElementById('micIcon').style.display = "none";
+          recognizing = false;
+          toggleButtons();
+        }
+      };
+
+      recognition.onerror = function(event) {
+        // Prøv næste sprog ved fejl
+        tryRecognize(langIndex + 1);
+      };
+
+      recognition.onend = function() {
+        if (!recognizing) return; // Stop kaldet kommer fra stop-knap, så ignorer
+
+        // Hvis ikke resultat, prøv næste sprog
+        if (!recognition.result) {
+          tryRecognize(langIndex + 1);
+        }
+      };
+    }
+
+    function startRecognition() {
+      resetFields();
+      tryRecognize(0);
+    }
+
+    function stopRecognition() {
+      if (recognition && recognizing) {
+        recognition.stop();
+        recognizing = false;
+        document.getElementById('status').textContent = "⏹️ Optagelse stoppet.";
+        document.getElementById('micIcon').style.display = "none";
+        toggleButtons();
+      }
+    }
+
+    function resetFields() {
+      document.getElementById('spokenText').textContent = "Du sagde: ...";
+      document.getElementById('translatedText').textContent = "Oversat: ...";
+      document.getElementById('status').textContent = "";
+      document.getElementById('micIcon').style.display = "none";
+    }
+
+    function toggleButtons() {
+      document.getElementById('startBtn').disabled = recognizing;
+      document.getElementById('stopBtn').disabled = !recognizing;
+    }
+  </script>
+</body>
+</html>
