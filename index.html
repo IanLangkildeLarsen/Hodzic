@@ -1,45 +1,29 @@
 <!DOCTYPE html>
 <html lang="da">
-  <link rel="manifest" href="manifest.json" />
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("✅ Service Worker registreret"))
-      .catch(err => console.log("❌ SW fejl:", err));
-  }
-</script>
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="manifest" href="manifest.json" />
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("✅ Service Worker registreret"))
-      .catch(err => console.log("❌ SW fejl:", err));
-  }
-</script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🎤 Taleoversætter</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+
   <style>
     body {
       font-family: system-ui, sans-serif;
       background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
-
     h2 {
       font-size: 28px;
       margin-bottom: 10px;
     }
-
     #flags {
       font-size: 40px;
       margin-bottom: 15px;
     }
-
     button {
       font-size: 18px;
       padding: 12px 20px;
@@ -51,11 +35,9 @@
       cursor: pointer;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-
     button:hover {
       background-color: #005ecb;
     }
-
     #micIcon {
       margin: 20px auto;
       width: 60px;
@@ -65,13 +47,11 @@
       animation: pulse 1s infinite;
       display: none;
     }
-
     @keyframes pulse {
       0% { transform: scale(1); opacity: 0.7; }
       50% { transform: scale(1.2); opacity: 1; }
       100% { transform: scale(1); opacity: 0.7; }
     }
-
     .box {
       background: white;
       border-radius: 10px;
@@ -79,15 +59,25 @@
       margin-top: 15px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-
     #status {
       margin-top: 10px;
       font-weight: bold;
       color: #d00;
+      min-height: 24px;
     }
   </style>
+
+  <script>
+    // Registrer service worker til PWA
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+        .then(() => console.log("✅ Service Worker registreret"))
+        .catch(err => console.log("❌ SW fejl:", err));
+    }
+  </script>
 </head>
 <body>
+
   <h2>🎤 Automatisk Taleoversætter</h2>
   <div id="flags">🇩🇰 ↔ 🇧🇦</div>
 
@@ -103,14 +93,25 @@
   </div>
 
   <script>
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.interimResults = false;
+    // Tjek om browser understøtter talegenkendelse
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      document.getElementById('status').textContent = "❌ Din browser understøtter ikke talegenkendelse. Prøv Safari på iPhone.";
+    }
 
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    if (recognition) {
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    }
+
+    // Sprogkonfiguration: dansk og bosnisk
     const langs = [
       { code: "da-DK", name: "Dansk", target: "bs", speakLang: "bs-BA" },
       { code: "bs-BA", name: "Bosnisk", target: "da", speakLang: "da-DK" }
     ];
 
+    // Prøv at genkende tale på forskellige sprog i rækkefølge
     async function tryRecognize(langIndex = 0) {
       if (langIndex >= langs.length) {
         document.getElementById('status').textContent = "❌ Kunne ikke genkende sproget.";
@@ -120,56 +121,8 @@
 
       recognition.lang = langs[langIndex].code;
       recognition.start();
+      document.getElementById('status').textContent = `🎙️ Lytter på ${langs[langIndex].name}...`;
+      document.getElementById('micIcon').style.display = "block";
 
       recognition.onresult = async function(event) {
-        const spoken = event.results[0][0].transcript;
-        document.getElementById('spokenText').textContent = "Du sagde (" + langs[langIndex].name + "): " + spoken;
-
-        const res = await fetch("https://libretranslate.de/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            q: spoken,
-            source: langs[langIndex].code.slice(0, 2),
-            target: langs[langIndex].target,
-            format: "text"
-          })
-        });
-
-        const data = await res.json();
-        const translated = data.translatedText;
-        document.getElementById('translatedText').textContent = "Oversat: " + translated;
-
-        const utterance = new SpeechSynthesisUtterance(translated);
-        utterance.lang = langs[langIndex].speakLang;
-        speechSynthesis.speak(utterance);
-
-        document.getElementById('status').textContent = "";
-        document.getElementById('micIcon').style.display = "none";
-      };
-
-      recognition.onerror = function() {
-        tryRecognize(langIndex + 1);
-      };
-
-      recognition.onend = () => {
-        // hvis intet resultat: prøv næste
-        tryRecognize(langIndex + 1);
-      };
-    }
-
-    function startRecognition() {
-      document.getElementById('status').textContent = "🎙️ Lytter...";
-      document.getElementById('micIcon').style.display = "block";
-      tryRecognize(0);
-    }
-
-    function resetFields() {
-      document.getElementById('spokenText').textContent = "Du sagde: ...";
-      document.getElementById('translatedText').textContent = "Oversat: ...";
-      document.getElementById('status').textContent = "";
-    }
-  </script>
-</body>
-</html>
-
+        const spo
