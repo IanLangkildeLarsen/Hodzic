@@ -27,13 +27,14 @@
     button {
       font-size: 18px;
       padding: 12px 20px;
-      margin: 10px;
+      margin: 10px 5px;
       background-color: #007AFF;
       color: white;
       border: none;
       border-radius: 12px;
       cursor: pointer;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      min-width: 140px;
     }
     button:hover {
       background-color: #005ecb;
@@ -63,66 +64,5 @@
       margin-top: 10px;
       font-weight: bold;
       color: #d00;
-      min-height: 24px;
-    }
-  </style>
+      mi
 
-  <script>
-    // Registrer service worker til PWA
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("✅ Service Worker registreret"))
-        .catch(err => console.log("❌ SW fejl:", err));
-    }
-  </script>
-</head>
-<body>
-
-  <h2>🎤 Automatisk Taleoversætter</h2>
-  <div id="flags">🇩🇰 ↔ 🇧🇦</div>
-
-  <div id="micIcon"></div>
-  <div id="status"></div>
-
-  <button onclick="startRecognition()">🎙️ Start optagelse</button>
-  <button onclick="resetFields()">🔁 Oversæt igen</button>
-
-  <div class="box">
-    <p id="spokenText">Du sagde: ...</p>
-    <p id="translatedText">Oversat: ...</p>
-  </div>
-
-  <script>
-    // Tjek om browser understøtter talegenkendelse
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      document.getElementById('status').textContent = "❌ Din browser understøtter ikke talegenkendelse. Prøv Safari på iPhone.";
-    }
-
-    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if (recognition) {
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-    }
-
-    // Sprogkonfiguration: dansk og bosnisk
-    const langs = [
-      { code: "da-DK", name: "Dansk", target: "bs", speakLang: "bs-BA" },
-      { code: "bs-BA", name: "Bosnisk", target: "da", speakLang: "da-DK" }
-    ];
-
-    // Prøv at genkende tale på forskellige sprog i rækkefølge
-    async function tryRecognize(langIndex = 0) {
-      if (langIndex >= langs.length) {
-        document.getElementById('status').textContent = "❌ Kunne ikke genkende sproget.";
-        document.getElementById('micIcon').style.display = "none";
-        return;
-      }
-
-      recognition.lang = langs[langIndex].code;
-      recognition.start();
-      document.getElementById('status').textContent = `🎙️ Lytter på ${langs[langIndex].name}...`;
-      document.getElementById('micIcon').style.display = "block";
-
-      recognition.onresult = async function(event) {
-        const spo
