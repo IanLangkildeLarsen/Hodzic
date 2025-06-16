@@ -3,27 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Automatisk Taleoversætter</title>
+  <title>🎤 Taleoversætter</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
       text-align: center;
       padding: 20px;
     }
 
     h2 {
-      color: #333;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    #flags {
+      font-size: 40px;
+      margin-bottom: 15px;
     }
 
     button {
-      font-size: 20px;
-      padding: 12px 24px;
+      font-size: 18px;
+      padding: 12px 20px;
+      margin: 10px;
       background-color: #007AFF;
       color: white;
       border: none;
       border-radius: 12px;
       cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    button:hover {
+      background-color: #005ecb;
     }
 
     #micIcon {
@@ -42,28 +54,35 @@
       100% { transform: scale(1); opacity: 0.7; }
     }
 
-    #status, #spokenText, #translatedText {
+    .box {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
       margin-top: 15px;
-      font-size: 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    #spokenText, #translatedText {
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #d00;
     }
   </style>
 </head>
 <body>
   <h2>🎤 Automatisk Taleoversætter</h2>
+  <div id="flags">🇩🇰 ↔ 🇧🇦</div>
 
   <div id="micIcon"></div>
   <div id="status"></div>
 
-  <button onclick="startRecognition()">Start optagelse</button>
+  <button onclick="startRecognition()">🎙️ Start optagelse</button>
+  <button onclick="resetFields()">🔁 Oversæt igen</button>
 
-  <p id="spokenText">Du sagde: ...</p>
-  <p id="translatedText">Oversat: ...</p>
+  <div class="box">
+    <p id="spokenText">Du sagde: ...</p>
+    <p id="translatedText">Oversat: ...</p>
+  </div>
 
   <script>
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -112,15 +131,12 @@
       };
 
       recognition.onerror = function() {
-        // Prøv næste sprog
         tryRecognize(langIndex + 1);
       };
 
       recognition.onend = () => {
-        if (!recognition.resultHandled) {
-          // Prøv næste hvis ingen resultat
-          tryRecognize(langIndex + 1);
-        }
+        // hvis intet resultat: prøv næste
+        tryRecognize(langIndex + 1);
       };
     }
 
@@ -129,6 +145,13 @@
       document.getElementById('micIcon').style.display = "block";
       tryRecognize(0);
     }
+
+    function resetFields() {
+      document.getElementById('spokenText').textContent = "Du sagde: ...";
+      document.getElementById('translatedText').textContent = "Oversat: ...";
+      document.getElementById('status').textContent = "";
+    }
   </script>
 </body>
 </html>
+
